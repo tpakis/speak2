@@ -44,11 +44,13 @@ actor WhisperTranscriber: TranscriptionEngine {
         whisperKit = nil
     }
 
-    func transcribe(audioURL: URL) async throws -> String {
+    func transcribe(audioURL: URL, dictionaryHint: String? = nil) async throws -> String {
         guard let whisperKit = whisperKit else {
             throw TranscriptionEngineError.modelNotLoaded
         }
 
+        // Note: WhisperKit's promptTokens feature can cause empty results in some cases.
+        // Dictionary word prioritization is handled via post-processing in DictionaryProcessor.
         let results = try await whisperKit.transcribe(audioPath: audioURL.path)
 
         let transcription = results

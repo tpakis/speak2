@@ -5,6 +5,7 @@ class DictationController {
     private let hotkeyManager = HotkeyManager()
     private let audioRecorder = AudioRecorder()
     private let textInjector = TextInjector()
+    private let dictionaryProcessor = DictionaryProcessor()
     private let appState = AppState.shared
 
     let modelManager = ModelManager()
@@ -68,7 +69,20 @@ class DictationController {
 
         Task {
             do {
-                let text = try await modelManager.transcribe(audioURL: audioURL)
+                // Get dictionary hint for model prompting (mainly for WhisperKit)
+                let dictionaryHint = appState.dictionaryState.promptText(for: .english)
+
+                // Transcribe with dictionary hint
+                var text = try await modelManager.transcribe(
+                    audioURL: audioURL,
+                    dictionaryHint: dictionaryHint.isEmpty ? nil : dictionaryHint
+                )
+
+                // Post-process with dictionary entries (applies to all engines)
+                let entries = appState.dictionaryState.enabledEntries(for: .english)
+                if !entries.isEmpty {
+                    text = dictionaryProcessor.process(text, using: entries, language: .english)
+                }
 
                 await MainActor.run {
                     if !text.isEmpty {
